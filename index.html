@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up / Login & Preferences with Timer</title>
+    <style>
+        /* General Body Styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
+
+        /* Form Styling */
+        form {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            margin: auto;
+        }
+
+        input[type="text"], input[type="email"], input[type="password"], input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Preferences Section Styling */
+        #preferencesSection {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            margin: auto;
+            display: none;
+        }
+
+        h1, h2 {
+            color: #333;
+            font-weight: normal;
+        }
+
+        #preferencesForm label {
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        /* Exercise Output and Timer Styling */
+        #exerciseOutput {
+            background: #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        #timerSection, #restSection {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #timer, #restTimer {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            color: #333;
+        }
+
+        #messageSection {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 600px) {
+            form, #preferencesSection, #timerSection, #restSection {
+                padding: 15px;
+                margin: 10px;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Sign Up / Login</h1>
+    <form id="authForm">
+        <input type="text" id="firstName" placeholder="First Name" required><br>
+        <input type="text" id="lastName" placeholder="Last Name" required><br>
+        <input type="email" id="email" placeholder="Email" required><br>
+        <input type="password" id="password" placeholder="Password" required><br>
+        <button type="button" id="signUpButton">Sign Up</button>
+        <button type="button" id="loginButton">Login</button>
+    </form>
+
+    <div id="preferencesSection">
+        <h1 id="welcomeMessage"></h1>
+        <h2>Select Your Preferences</h2>
+        <form id="preferencesForm">
+            <label>
+                <input type="checkbox" name="preferences" value="Bodyweight"> Bodyweight
+            </label><br>
+            <label>
+                <input type="checkbox" name="preferences" value="Dumbbells"> Dumbbells
+            </label><br>
+            <label>
+                <input type="checkbox" name="preferences" value="Kettlebells"> Kettlebells
+            </label><br>
+            <label>
+                <input type="checkbox" name="preferences" value="Resistance Bands"> Resistance Bands
+            </label><br>
+            <button type="submit">Save Preferences</button>
+        </form>
+    </div>
+
+    <div id="exerciseOutput"></div>
+    <div id="timerSection" style="display:none;">
+        <h2 id="timer"></h2>
+        <label for="repsInput">Enter Reps Done:</label>
+        <input type="number" id="repsInput" placeholder="Enter reps" min="0"><br>
+        <button id="saveRepsButton">Save Reps</button>
+    </div>
+    <div id="restSection" style="display:none;">
+        <h2>Rest for 30 seconds</h2>
+        <h3 id="restTimer"></h3>
+        <label for="repsDuringRestInput">Enter Reps During Rest:</label>
+        <input type="number" id="repsDuringRestInput" placeholder="Enter reps" min="0"><br>
+        <button id="saveRepsDuringRestButton">Reps Saved</button>
+    </div>
+
+    <div id="messageSection" style="color: blue; font-weight: bold;"></div>
+
+    <script>
+        // Utility functions to handle cookies
+        function setCookie(name, value, days) {
+            const d = new Date();
+            d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+            const expires = "expires=" + d.toUTCString();
+            document.cookie = name + "=" + value + ";" + expires + ";path=/";
+        }
+
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
+        function eraseCookie(name) {   
+            document.cookie = name + '=; Max-Age=-99999999;';  
+        }
+
+        // Simulated "database" for storing users (in reality, you would use a server-side database)
+        const usersDB = {};
+
+        // Show message in the message section
+        function showMessage(message) {
+            document.getElementById('messageSection').innerText = message;
+        }
+
+        // Handle Sign Up
+        document.getElementById('signUpButton').addEventListener('click', () => {
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if (usersDB[email]) {
+                showMessage('User already exists. Please log in.');
+            } else {
+                usersDB[email] = { firstName: firstName, lastName: lastName, password: password, preferences: [], reps: {} };
+                setCookie('userEmail', email, 1); // Save the email in a cookie
+                showMessage('Signed up successfully!');
+                showPreferencesSection();
+            }
+        });
+
+        // Handle Login
+        document.getElementById('loginButton').addEventListener('click', () => {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if (usersDB[email] && usersDB[email].password === password) {
+                setCookie('userEmail', email, 1); // Save the email in a cookie
+                showMessage('Logged in successfully!');
+                showPreferencesSection();
+            } else {
+                showMessage('Invalid email or password.');
+            }
+        });
+
+        // Show Preferences Section
+        function showPreferencesSection() {
+            document.getElementById('authForm').style.display = 'none';
+            document.getElementById('preferencesSection').style.display = 'block';
+
+            const userEmail = getCookie('userEmail');
+            if (userEmail && usersDB[userEmail]) {
+                const user = usersDB[userEmail];
+                document.getElementById('welcomeMessage').innerText = `Welcome, ${user.firstName} ${user.lastName}!`;
+
+                const userPreferences = user.preferences;
+                document.querySelectorAll('input[name="preferences"]').forEach((checkbox) => {
+                    checkbox.checked = userPreferences.includes(checkbox.value);
+                });
+            }
+        }
+
+        // Handle Preferences Form Submission and Generate Exercises
+        document.getElementById('preferencesForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const userEmail = getCookie('userEmail');
+            if (userEmail && usersDB[userEmail]) {
+                const selectedPreferences = [];
+                document.querySelectorAll('input[name="preferences"]:checked').forEach((checkbox) => {
+                    selectedPreferences.push(checkbox.value);
+                });
+
+                usersDB[userEmail].preferences = selectedPreferences;
+                showMessage('Preferences saved!');
+                document.getElementById('preferencesSection').style.display = 'none'; // Hide preferences section
+                generateRandomExercise(); // Show exercise output
+            } else {
+                showMessage('You need to be logged in to save preferences.');
+            }
+        });
+
+        // Generate Random Exercises based on preferences
+        function generateRandomExercise() {
+            const userEmail = getCookie('userEmail');
+            if (userEmail && usersDB[userEmail]) {
+                const userPreferences = usersDB[userEmail].preferences;
+                const availableExercises = [];
+
+                if (userPreferences.includes('Bodyweight')) {
+                    availableExercises.push('Push-ups', 'Squats', 'Lunges', 'Plank');
+                }
+                if (userPreferences.includes('Dumbbells')) {
+                    availableExercises.push('Dumbbell Curls', 'Dumbbell Press', 'Dumbbell Rows');
+                }
+                if (userPreferences.includes('Kettlebells')) {
+                    availableExercises.push('Kettlebell Swings', 'Kettlebell Deadlifts', 'Kettlebell Clean and Press');
+                }
+                if (userPreferences.includes('Resistance Bands')) {
+                    availableExercises.push('Resistance Band Squats', 'Resistance Band Rows', 'Resistance Band Curls');
+                }
+
+                if (availableExercises.length > 0) {
+                    const randomExercise = availableExercises[Math.floor(Math.random() * availableExercises.length)];
+                    document.getElementById('exerciseOutput').innerText = `Your exercise: ${randomExercise}`;
+                    document.getElementById('timerSection').style.display = 'block'; // Show timer section
+                    startExerciseTimer();
+                } else {
+                    document.getElementById('exerciseOutput').innerText = 'Please select at least one preference.';
+                }
+            } else {
+                showMessage('You need to be logged in to generate exercises.');
+            }
+        }
+
+        // Timer functions
+        function startExerciseTimer() {
+            let exerciseTime = 60;
+            let restTime = 30;
+            const timerElement = document.getElementById('timer');
+            const timerSection = document.getElementById('timerSection');
+            const restSection = document.getElementById('restSection');
+
+            timerSection.style.display = 'block';
+            restSection.style.display = 'none';
+
+            const exerciseInterval = setInterval(() => {
+                timerElement.innerText = `Time remaining: ${exerciseTime} seconds`;
+                exerciseTime--;
+
+                if (exerciseTime < 0) {
+                    clearInterval(exerciseInterval);
+                    startRestTimer(restTime);
+                }
+            }, 1000);
+        }
+
+        function startRestTimer(restTime) {
+            const restTimerElement = document.getElementById('restTimer');
+            const timerSection = document.getElementById('timerSection');
+            const restSection = document.getElementById('restSection');
+
+            timerSection.style.display = 'none';
+            restSection.style.display = 'block';
+
+            const restInterval = setInterval(() => {
+                restTimerElement.innerText = `Rest time: ${restTime} seconds`;
+                restTime--;
+
+                if (restTime < 0) {
+                    clearInterval(restInterval);
+                    // No longer hiding reps input during rest
+                }
+            }, 1000);
+        }
+
+        // Handle saving reps done
+        document.getElementById('saveRepsButton').addEventListener('click', () => {
+            const userEmail = getCookie('userEmail');
+            const repsDone = document.getElementById('repsInput').value;
+
+            if (userEmail && usersDB[userEmail]) {
+                usersDB[userEmail].reps[document.getElementById('exerciseOutput').innerText] = repsDone;
+                showMessage('Reps saved!');
+                document.getElementById('repsInput').value = ''; // Clear input
+                document.getElementById('timerSection').style.display = 'none'; // Hide timer section
+                document.getElementById('restSection').style.display = 'block'; // Show rest section
+            } else {
+                showMessage('You need to be logged in to save reps.');
+            }
+        });
+
+        // Handle saving reps done during rest
+        document.getElementById('saveRepsDuringRestButton').addEventListener('click', () => {
+            const userEmail = getCookie('userEmail');
+            const repsDuringRest = document.getElementById('repsDuringRestInput').value;
+
+            if (userEmail && usersDB[userEmail]) {
+                const currentExercise = document.getElementById('exerciseOutput').innerText;
+                if (currentExercise) {
+                    usersDB[userEmail].reps[currentExercise] = repsDuringRest;
+                    showMessage('Reps saved during rest!');
+                    document.getElementById('repsDuringRestInput').value = ''; // Clear input
+                } else {
+                    showMessage('No exercise found.');
+                }
+            } else {
+                showMessage('You need to be logged in to save reps.');
+            }
+        });
+
+    </script>
+
+</body>
+</html>
